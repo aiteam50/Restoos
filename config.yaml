@@ -1,0 +1,66 @@
+# RestroOS configuration. The app reads its rules from here instead of hard-coding them.
+# Every threshold named in the PRD (sections 6-10) lives in this file.
+project:
+  name: RestroOS
+  version: "2.0"          # 1.x = Level 1, 2.x = Level 2
+
+restaurant:
+  name: Spice Route Kitchen
+  phone: "+91 98765 43210"
+  address: "12 MG Road, Bengaluru 560001"
+  currency: "₹"
+  timezone: Asia/Kolkata
+  lat: 12.9756             # restaurant location for the delivery map
+  lng: 77.6050
+
+billing:
+  tax_percent: 5          # GST on food
+  packaging_charge: 20    # takeaway and delivery only
+
+orders:
+  desk_poll_seconds: 10
+  new_order_alert_min: 5  # PRD US-3: no order left in "New" longer than this
+  max_qty_per_item: 50
+
+kitchen:                  # F-9, F-10
+  kds_poll_seconds: 30    # fallback refresh; live updates are pushed instantly
+  sync_firing: true       # F-10: fire short items later so a whole order is ready together
+  kot_buffer_min: 1       # short items finish this many minutes before the longest one (keep well under the 3-min target)
+  station_queue_limit: 8  # above this many open items at a station, fire everything at once
+  learn_prep_time_min_samples: 10   # PRD section 6: learned prep time needs at least 10 samples
+  learn_window: 20                  # ...taken from the last 20 cooks of that dish
+  learned_vs_stated_max_diff: 0.50  # ...and must be within 50% of the menu's stated prep time
+  batch_tap_ratio: 0.30   # a cook shorter than 30% of expected prep counts as a batch/late tap
+
+delivery:
+  rider_poll_seconds: 15  # rider phone sends GPS this often (PRD F-14)
+  auto_assign_rider: true # assign the free rider who has been idle longest
+  stale_location_seconds: 60
+
+decisions:                # PRD section 6 (used in Level 2)
+  signals: [stock_vs_reorder_level, consumption_7d, same_weekday_4w]
+  min_agreeing: 2
+  safety_stock_days: 1
+  cover_days: 3           # a delivery should last this many days after it arrives
+  skip_snooze_hours: 24   # after "Skip", don't redraft that ingredient for this long
+  history_days: 28
+  require_manager_approval: true
+
+automation:               # F-15
+  auto_accept_online: true
+  auto_accept_max_open_orders: 6   # only auto-accept while the kitchen has fewer open orders than this
+
+ai:                       # F-13: writes the vendor message. Quantities never come from the AI.
+  model: claude-haiku-5-5
+  api_key_env: ANTHROPIC_API_KEY   # set this environment variable to enable; otherwise a template is used
+  timeout_seconds: 20
+
+validation:               # PRD sections 7 and 8, set before any result is seen
+  external_min_stock_accuracy: 0.95
+  internal_max_violations: 0
+  stability_ready_spread_min: 3
+  stability_min_share: 0.80
+  max_lost_orders: 0
+  max_stock_variance: 0.05
+  max_batch_tap_share: 0.20
+  max_po_edit_rate: 0.30
